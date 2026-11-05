@@ -7,15 +7,15 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION FIREBASE ---
-// Remplacez ces valeurs par les vôtres obtenues dans la console Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDWD4HXUHIAmkaypE2lJ9cCNhdf5sYuh_M",
   authDomain: "uspv-cps.firebaseapp.com",
   projectId: "uspv-cps",
-  storageBucket:  "uspv-cps.firebasestorage.app",
+  storageBucket: "uspv-cps.firebasestorage.app",
   messagingSenderId: "1028806355451",
   appId: "1:1028806355451:web:22e13d5a92359563ef835e",
-  measurementId: "G-LSJWBCEP40",
+  measurementId: "G-LSJWBCEP40"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -45,13 +45,10 @@ export default function App() {
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // --- SYNCHRONISATION EN TEMPS RÉEL (FIRESTORE) ---
   useEffect(() => {
-    // Écoute de l'effectif
     const unsubscribeRoster = onSnapshot(collection(db, "roster"), (snapshot) => {
-      const rosterData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const rosterData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       if (rosterData.length === 0) {
-        // Initialisation par défaut si la base est vide
         const defaultRoster = [
           { id: 'r1', name: 'Lucas Martin', belt: 'Marron' },
           { id: 'r2', name: 'Thomas Bernard', belt: 'Bleue' },
@@ -65,11 +62,9 @@ export default function App() {
       }
     });
 
-    // Écoute des événements
     const unsubscribeEvents = onSnapshot(collection(db, "events"), (snapshot) => {
-      const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const eventsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       if (eventsData.length === 0) {
-        // Initialisation par défaut de l'événement Axone
         const defaultEvent = {
           id: 'cps-axone-2026',
           title: 'CPS - Axone de Montbéliard',
@@ -208,8 +203,8 @@ export default function App() {
   };
 
   const generateWhatsAppText = (event) => {
-    const presents = event.attendees.filter(a => a.status === 'present');
-    const absents = event.attendees.filter(a => a.status === 'absent');
+    const presents = (event.attendees || []).filter(a => a.status === 'present');
+    const absents = (event.attendees || []).filter(a => a.status === 'absent');
     const needed = presents.filter(a => a.transport === 'needed');
 
     let text = `🥋 *USPV JUDO - ${event.title}*\n`;
@@ -240,7 +235,7 @@ export default function App() {
             <div className="bg-red-600 text-white p-2 rounded-xl font-bold flex items-center justify-center shadow-lg">🥋</div>
             <div>
               <h1 className="font-bold text-lg text-white leading-tight">USPV Judo - Ado/Adultes</h1>
-              <p className="text-xs text-slate-400">Gestion des présences & transports (Firestore)</p>
+              <p className="text-xs text-slate-400">Gestion des présences & transports</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
