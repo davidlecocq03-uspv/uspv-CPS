@@ -1,34 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { 
   Calendar, MapPin, Clock, Users, Car, Plus, Trash2, Edit2, 
   Check, QrCode, Lock, Unlock, Copy, X, ShieldCheck 
 } from 'lucide-react';
 
+// --- CONFIGURATION FIREBASE ---
+// Remplacez ces valeurs par les vôtres obtenues dans la console Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyDWD4HXUHIAmkaypE2lJ9cCNhdf5sYuh_M",
+  authDomain: "uspv-cps.firebaseapp.com",
+  projectId: "uspv-cps",
+  storageBucket:  "uspv-cps.firebasestorage.app",
+  messagingSenderId: "1028806355451",
+  appId: "1:1028806355451:web:22e13d5a92359563ef835e",
+  measurementId: "G-LSJWBCEP40",
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('events');
-  
-  const [events, setEvents] = useState([
-    {
-      id: 'cps-axone-2026',
-      title: 'CPS - Axone de Montbéliard',
-      date: '2026-11-16',
-      time: '18:30 - 20:30',
-      location: 'Axone, Montbéliard',
-      description: 'Entraînement interclub / CPS Judo.',
-      attendees: [
-        { id: '1', name: 'Lucas Martin', status: 'present', transport: 'autonomous', comment: '' },
-        { id: '2', name: 'Thomas Bernard', status: 'present', transport: 'needed', comment: 'Besoin de covoiturage' }
-      ]
-    }
-  ]);
-
-  const [roster, setRoster] = useState([
-    { id: 'r1', name: 'Lucas Martin', belt: 'Marron' },
-    { id: 'r2', name: 'Thomas Bernard', belt: 'Bleue' },
-    { id: 'r3', name: 'Sarah Petit', belt: 'Noire' },
-    { id: 'r4', name: 'Kevin Durand', belt: 'Verte' },
-    { id: 'r5', name: 'Manon Leroy', belt: 'Marron' }
-  ]);
+  const [events, setEvents] = useState([]);
+  const [roster, setRoster] = useState([]);
 
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [adminPin] = useState('2026');
@@ -49,6 +44,52 @@ export default function App() {
   const [newMemberBelt, setNewMemberBelt] = useState('Blanche');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+
+  // --- SYNCHRONISATION EN TEMPS RÉEL (FIRESTORE) ---
+  useEffect(() => {
+    // Écoute de l'effectif
+    const unsubscribeRoster = onSnapshot(collection(db, "roster"), (snapshot) => {
+      const rosterData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (rosterData.length === 0) {
+        // Initialisation par défaut si la base est vide
+        const defaultRoster = [
+          { id: 'r1', name: 'Lucas Martin', belt: 'Marron' },
+          { id: 'r2', name: 'Thomas Bernard', belt: 'Bleue' },
+          { id: 'r3', name: 'Sarah Petit', belt: 'Noire' }
+        ];
+        defaultRoster.forEach(async (m) => {
+          await setDoc(doc(db, "roster", m.id), { name: m.name, belt: m.belt });
+        });
+      } else {
+        setRoster(rosterData);
+      }
+    });
+
+    // Écoute des événements
+    const unsubscribeEvents = onSnapshot(collection(db, "events"), (snapshot) => {
+      const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (eventsData.length === 0) {
+        // Initialisation par défaut de l'événement Axone
+        const defaultEvent = {
+          id: 'cps-axone-2026',
+          title: 'CPS - Axone de Montbéliard',
+          date: '2026-11-16',
+          time: '18:30 - 20:30',
+          location: 'Axone, Montbéliard',
+          description: 'Entraînement interclub / CPS Judo.',
+          attendees: []
+        };
+        setDoc(doc(db, "events", defaultEvent.id), defaultEvent);
+      } else {
+        setEvents(eventsData);
+      }
+    });
+
+    return () => {
+      unsubscribeRoster();
+      unsubscribeEvents();
+    };
+  }, []);
 
   const handlePinSubmit = (e) => {
     e.preventDefault();
@@ -93,79 +134,77 @@ export default function App() {
     }
   };
 
-  const handleSaveRegistration = (e) => {
+  const handleSaveRegistration = async (e) => {
     e.preventDefault();
     const finalName = selectedJudokaForReg === 'AUTRE' ? customJudokaName : selectedJudokaForReg;
     if (!finalName.trim()) return;
 
-    const updatedEvents = events.map(ev => {
-      if (ev.id === selectedEventForModal.id) {
-        let newAttendees = [...ev.attendees];
-        const existingIndex = newAttendees.findIndex(a => a.name.toLowerCase() === finalName.toLowerCase() && a.id !== editingAttendeeId);
-        
-        const attendeeData = {
-          id: editingAttendeeId || Date.now().toString(),
-          name: finalName,
-          status: regStatus,
-          transport: regStatus === 'present' ? regTransport : null,
-          comment: regComment
-        };
+    const eventRef = doc(db, "events", selectedEventForModal.id);
+    let newAttendees = [...selectedEventForModal.attendees];
+    
+    const attendeeData = {
+      id: editingAttendeeId || Date.now().toString(),
+      name: finalName,
+      status: regStatus,
+      transport: regStatus === 'present' ? regTransport : null,
+      comment: regComment
+    };
 
-        if (existingIndex >= 0) {
-          newAttendees[existingIndex] = attendeeData;
-        } else if (editingAttendeeId) {
-          newAttendees = newAttendees.map(a => a.id === editingAttendeeId ? attendeeData : a);
-        } else {
-          newAttendees.push(attendeeData);
-        }
-        return { ...ev, attendees: newAttendees };
-      }
-      return ev;
-    });
+    const existingIndex = newAttendees.findIndex(a => a.name.toLowerCase() === finalName.toLowerCase() && a.id !== editingAttendeeId);
+    if (existingIndex >= 0) {
+      newAttendees[existingIndex] = attendeeData;
+    } else if (editingAttendeeId) {
+      newAttendees = newAttendees.map(a => a.id === editingAttendeeId ? attendeeData : a);
+    } else {
+      newAttendees.push(attendeeData);
+    }
 
-    setEvents(updatedEvents);
+    await updateDoc(eventRef, { attendees: newAttendees });
     setSelectedEventForModal(null);
   };
 
-  const handleQuickStatusToggle = (eventId, memberName, status, transport = 'autonomous') => {
-    const updatedEvents = events.map(ev => {
-      if (ev.id === eventId) {
-        let newAttendees = [...ev.attendees];
-        const idx = newAttendees.findIndex(a => a.name.toLowerCase() === memberName.toLowerCase());
-        if (idx >= 0) {
-          newAttendees[idx] = { ...newAttendees[idx], status, transport: status === 'present' ? transport : null };
-        } else {
-          newAttendees.push({ id: Date.now().toString(), name: memberName, status, transport: status === 'present' ? transport : null, comment: '' });
-        }
-        return { ...ev, attendees: newAttendees };
-      }
-      return ev;
-    });
-    setEvents(updatedEvents);
+  const handleQuickStatusToggle = async (eventId, memberName, status, transport = 'autonomous') => {
+    const targetEvent = events.find(ev => ev.id === eventId);
+    if (!targetEvent) return;
+
+    const eventRef = doc(db, "events", eventId);
+    let newAttendees = [...targetEvent.attendees];
+    const idx = newAttendees.findIndex(a => a.name.toLowerCase() === memberName.toLowerCase());
+
+    if (idx >= 0) {
+      newAttendees[idx] = { ...newAttendees[idx], status, transport: status === 'present' ? transport : null };
+    } else {
+      newAttendees.push({ id: Date.now().toString(), name: memberName, status, transport: status === 'present' ? transport : null, comment: '' });
+    }
+
+    await updateDoc(eventRef, { attendees: newAttendees });
   };
 
-  const handleCreateEvent = (e) => {
+  const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!newEvent.title || !newEvent.date) return;
-    setEvents([...events, { id: Date.now().toString(), ...newEvent, attendees: [] }]);
+    const newId = Date.now().toString();
+    const eventData = { id: newId, ...newEvent, attendees: [] };
+    await setDoc(doc(db, "events", newId), eventData);
     setNewEvent({ title: '', date: '', time: '', location: '', description: '' });
   };
 
-  const handleDeleteEvent = (eventId) => {
+  const handleDeleteEvent = async (eventId) => {
     if (confirm('Supprimer cet événement ?')) {
-      setEvents(events.filter(e => e.id !== eventId));
+      await deleteDoc(doc(db, "events", eventId));
     }
   };
 
-  const handleAddMember = (e) => {
+  const handleAddMember = async (e) => {
     e.preventDefault();
     if (!newMemberName.trim()) return;
-    setRoster([...roster, { id: Date.now().toString(), name: newMemberName, belt: newMemberBelt }]);
+    const newId = Date.now().toString();
+    await setDoc(doc(db, "roster", newId), { name: newMemberName, belt: newMemberBelt });
     setNewMemberName('');
   };
 
-  const handleDeleteMember = (memberId) => {
-    setRoster(roster.filter(m => m.id !== memberId));
+  const handleDeleteMember = async (memberId) => {
+    await deleteDoc(doc(db, "roster", memberId));
   };
 
   const generateWhatsAppText = (event) => {
@@ -201,7 +240,7 @@ export default function App() {
             <div className="bg-red-600 text-white p-2 rounded-xl font-bold flex items-center justify-center shadow-lg">🥋</div>
             <div>
               <h1 className="font-bold text-lg text-white leading-tight">USPV Judo - Ado/Adultes</h1>
-              <p className="text-xs text-slate-400">Gestion des présences & transports</p>
+              <p className="text-xs text-slate-400">Gestion des présences & transports (Firestore)</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -223,14 +262,14 @@ export default function App() {
             <div className="flex justify-between items-center bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
               <div>
                 <h2 className="text-lg font-bold text-white">Prochains Sorties & CPS</h2>
-                <p className="text-xs text-slate-400">Indiquez votre présence et mode de transport</p>
+                <p className="text-xs text-slate-400">Synchronisé en direct avec Firebase</p>
               </div>
               <button onClick={() => setShowQrModal(true)} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"><QrCode className="w-4 h-4" /> Affiche QR</button>
             </div>
 
             {events.map(event => {
-              const presents = event.attendees.filter(a => a.status === 'present');
-              const absents = event.attendees.filter(a => a.status === 'absent');
+              const presents = (event.attendees || []).filter(a => a.status === 'present');
+              const absents = (event.attendees || []).filter(a => a.status === 'absent');
               const needed = presents.filter(a => a.transport === 'needed');
 
               return (
@@ -278,7 +317,7 @@ export default function App() {
                     <h4 className="text-xs font-bold uppercase text-slate-400">Pointage rapide (Tatami)</h4>
                     <div className="space-y-2">
                       {roster.map(member => {
-                        const existingReg = event.attendees.find(a => a.name.toLowerCase() === member.name.toLowerCase());
+                        const existingReg = (event.attendees || []).find(a => a.name.toLowerCase() === member.name.toLowerCase());
                         const currentStatus = existingReg ? existingReg.status : 'pending';
                         const currentTransport = existingReg ? existingReg.transport : 'autonomous';
 
@@ -300,9 +339,9 @@ export default function App() {
                   </div>
 
                   <div className="space-y-2 pt-2">
-                    <h4 className="text-xs font-bold uppercase text-slate-400">Réponses enregistrées ({event.attendees.length})</h4>
+                    <h4 className="text-xs font-bold uppercase text-slate-400">Réponses enregistrées ({(event.attendees || []).length})</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {event.attendees.map(attendee => (
+                      {(event.attendees || []).map(attendee => (
                         <div key={attendee.id} className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 flex justify-between items-start">
                           <div>
                             <div className="font-semibold text-sm text-slate-200">{attendee.name}</div>
@@ -348,7 +387,7 @@ export default function App() {
 
         {activeTab === 'admin' && (
           <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2"><Car className="w-5 h-5 text-red-500" /> Nouvel Événement Club</h2>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-red-500" /> Nouvel Événement Club</h2>
             <form onSubmit={handleCreateEvent} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input type="text" placeholder="Titre (ex: Tournoi...)" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} required className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500" />
