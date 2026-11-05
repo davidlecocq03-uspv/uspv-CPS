@@ -361,7 +361,18 @@ export default function App() {
               <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-3">
                 <input type="text" placeholder="Prénom et Nom" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500" />
                 <select value={newMemberBelt} onChange={(e) => setNewMemberBelt(e.target.value)} className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
-                  <option value="Blanche">Blanche</option><option value="Jaune">Jaune</option><option value="Orange">Orange</option><option value="Verte">Verte</option><option value="Bleue">Bleue</option><option value="Marron">Marron</option><option value="Noire">Noire</option>
+                  <option value="Blanche">Blanche</option>
+                  <option value="Blanche-Jaune">Blanche-Jaune</option>
+                  <option value="Jaune">Jaune</option>
+                  <option value="Jaune-Orange">Jaune-Orange</option>
+                  <option value="Orange">Orange</option>
+                  <option value="Orange-Verte">Orange-Verte</option>
+                  <option value="Verte">Verte</option>
+                  <option value="Vert-Bleue">Vert-Bleue</option>
+                  <option value="Bleue">Bleue</option>
+                  <option value="Bleu-Marron">Bleu-Marron</option>
+                  <option value="Marron">Marron</option>
+                  <option value="Noire">Noire</option>
                 </select>
                 <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-xl text-sm">Ajouter</button>
               </form>
