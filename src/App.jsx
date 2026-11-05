@@ -276,9 +276,11 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => copyToWhatsApp(event)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow">
-                        {copiedWhatsApp ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copiedWhatsApp ? 'Copié !' : 'Récap WhatsApp'}
-                      </button>
+                      {isAdminUnlocked && (
+                        <button onClick={() => copyToWhatsApp(event)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow">
+                          {copiedWhatsApp ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copiedWhatsApp ? 'Copié !' : 'Récap WhatsApp'}
+                        </button>
+                      )}
                       {isAdminUnlocked && (
                         <button onClick={() => handleDeleteEvent(event.id)} className="bg-red-600/20 text-red-400 p-2 rounded-xl"><Trash2 className="w-4 h-4" /></button>
                       )}
