@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { 
   Calendar, MapPin, Clock, Users, Car, Plus, Trash2, Edit2, 
-  Check, QrCode, Lock, Unlock, Copy, X, ShieldCheck 
+  Check, Lock, Unlock, Copy, X, ShieldCheck 
 } from 'lucide-react';
 
 // --- CONFIGURATION FIREBASE ---
@@ -43,7 +43,6 @@ export default function App() {
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberBelt, setNewMemberBelt] = useState('Blanche');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
 
   useEffect(() => {
     const unsubscribeRoster = onSnapshot(collection(db, "roster"), (snapshot) => {
@@ -254,12 +253,9 @@ export default function App() {
       <main className="max-w-4xl mx-auto px-4 py-6 flex-1 w-full">
         {activeTab === 'events' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
-              <div>
-                <h2 className="text-lg font-bold text-white">Prochains Sorties & CPS</h2>
-                <p className="text-xs text-slate-400">Synchronisé en direct avec Firebase</p>
-              </div>
-              <button onClick={() => setShowQrModal(true)} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"><QrCode className="w-4 h-4" /> Affiche QR</button>
+            <div className="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
+              <h2 className="text-lg font-bold text-white">Prochains Sorties & CPS</h2>
+              <p className="text-xs text-slate-400">Synchronisé en direct avec Firebase</p>
             </div>
 
             {events.map(event => {
@@ -443,19 +439,6 @@ export default function App() {
                 <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-xl text-xs font-semibold">Valider</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {showQrModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
-            <h3 className="text-lg font-bold text-white">Affiche Dojo - QR Code</h3>
-            <div className="bg-white p-6 rounded-2xl inline-block">
-              <QrCode className="w-24 h-24 mx-auto text-red-600" />
-            </div>
-            <p className="text-xs text-slate-300 font-mono bg-slate-900 py-2 px-3 rounded-xl border border-slate-700">Lien : https://uspv-cps.vercel.app</p>
-            <button onClick={() => setShowQrModal(false)} className="w-full bg-slate-700 text-slate-200 py-2.5 rounded-xl text-sm font-semibold">Fermer</button>
           </div>
         </div>
       )}
